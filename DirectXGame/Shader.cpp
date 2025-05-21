@@ -61,7 +61,7 @@ void Shader::LoadDxc(const std::wstring& filePath, const std::wstring& shaderMod
 	IDxcBlobEncoding* shaderSource = nullptr;
 	hr = dxcUtils->LoadFile(filePath.c_str(), nullptr, &shaderSource);
 	assert(SUCCEEDED(hr));
-
+	
 	// 読み込んだファイルの内容をDxcBufferに設定する
 	DxcBuffer shaderSourceBuffer;
 	shaderSourceBuffer.Ptr = shaderSource->GetBufferPointer();
