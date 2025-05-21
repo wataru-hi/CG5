@@ -8,7 +8,7 @@
 class Shader {
 public:
 	// シェーダーファイルを読み込み、コンパイルデータを作成
-	void Load(const std::wstring& filePath, const std::string& shaderModel);
+	void Load(const std::wstring& filePath, const std::wstring& shaderModel);
 	void LoadDxc(const std::wstring& filePath, const std::wstring& shaderModel);
 
 	// 生成したコンパイル済みのデータを取得する
