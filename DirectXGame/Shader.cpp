@@ -1,12 +1,9 @@
 #include "Shader.h"
-
+#include "MiscUtility.h"
 #include <cassert>
-
-//#include <dxcapi.h>
 
 #pragma comment(lib, "dxcompiler.lib")
 
-#include "MiscUtility.h"
 
 void Shader::Load(const std::wstring& filePath, const std::wstring& shaderModel) {
 	ID3DBlob* shaderBlob = nullptr;
