@@ -20,9 +20,8 @@ struct VertexData {
 };
 
 uint16_t indices[] = {
-	0,
-	1,
-	2,
+    0, 1, 2, // 1枚目の三角形（左上, 右上, 左下）
+    2, 1, 3  // 2枚目の三角形（左下, 右上, 右下）
 };
 
 // Windowsアプリのエントリーポイント
@@ -67,9 +66,10 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 #pragma region VertexData
 
 	VertexData verteces[] = {
-		{0.0f,  0.5f,  0.0f, 1.0f}, // 上
-		{0.5f,  -0.5f, 0.0f, 1.0f}, // 右下
-		{-0.5f, -0.5f, 0.0f, 1.0f}, // 左下
+	    {{-1.0f, 1.0f, 0.0f, 1.0f}},  // 左上
+	    {{1.0f, 1.0f, 0.0f, 1.0f}},   // 右上
+	    {{-1.0f, -1.0f, 0.0f, 1.0f}}, // 左下
+	    {{1.0f, -1.0f, 0.0f, 1.0f}},  // 右下
 	};
 
 #pragma endregion
@@ -114,7 +114,7 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		commandList->IASetVertexBuffers(0, 1, vb.GetView());
 		commandList->IASetIndexBuffer(ib.GetView());
 		commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-		commandList->DrawInstanced(_countof(indices), 1, 0, 0);
+		commandList->DrawIndexedInstanced(_countof(indices), 1, 0, 0, 0);
 
 		dxCommon->PostDraw();
 	}
