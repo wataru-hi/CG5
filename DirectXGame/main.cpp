@@ -3,6 +3,7 @@
 #include "RootSignature.h"
 #include "PipelineState.h"
 #include "VertexBuffer.h"
+#include "indexBuffer.h"
 
 #include <Windows.h>
 #include <system_error>
@@ -16,6 +17,12 @@ void SetupPipelineState(PipelineState& pipelineState, RootSignature& rs, Shader&
 // Vertex4 => VertexData に変更して利用する
 struct VertexData {
 	Vector4 position;
+};
+
+uint16_t indices[] = {
+	0,
+	1,
+	2,
 };
 
 // Windowsアプリのエントリーポイント
@@ -80,6 +87,20 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	}
 #pragma endregion
 
+#pragma region IndexBuffer
+	// IndexBuffer(IndexResource, IndexResourceView)の生成
+	IndexBuffer ib;
+	ib.Create(sizeof(indices), sizeof(indices[0]));
+
+	// 頂点インデックスリソースにデータを書き込む
+	uint16_t* pGpuIndices = nullptr;
+	ib.Get()->Map(0, nullptr, reinterpret_cast<void**>(&pGpuIndices));
+
+	for (int i = 0; i < _countof(indices); ++i) {
+		pGpuIndices[i] = indices[i];
+	}
+#pragma endregion
+
 	while (true) {
 		if (KamataEngine::Update()) {
 			break;
@@ -91,8 +112,9 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		commandList->SetGraphicsRootSignature(rs.Get());
 		commandList->SetPipelineState(pipelineState.Get());
 		commandList->IASetVertexBuffers(0, 1, vb.GetView());
+		commandList->IASetIndexBuffer(ib.GetView());
 		commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-		commandList->DrawInstanced(3, 1, 0, 0);
+		commandList->DrawInstanced(_countof(indices), 1, 0, 0);
 
 		dxCommon->PostDraw();
 	}
