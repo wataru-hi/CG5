@@ -17,6 +17,7 @@ void SetupPipelineState(PipelineState& pipelineState, RootSignature& rs, Shader&
 // Vertex4 => VertexData に変更して利用する
 struct VertexData {
 	Vector4 position;
+	Vector2 texcoord;
 };
 
 uint16_t indices[] = {
@@ -65,25 +66,25 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 #pragma region VertexBuffer(VertexResource, VertexResourceView)
 #pragma region VertexData
 
-	VertexData verteces[] = {
-	    {{-1.0f, 1.0f, 0.0f, 1.0f}},  // 左上
-	    {{1.0f, 1.0f, 0.0f, 1.0f}},   // 右上
-	    {{-1.0f, -1.0f, 0.0f, 1.0f}}, // 左下
-	    {{1.0f, -1.0f, 0.0f, 1.0f}},  // 右下
+	VertexData vertices[] = {
+		{{-1.0f,  1.0f, 0.0f, 1.0f}, {0.0f, 0.0f}}, // 左上
+		{{ 1.0f,  1.0f, 0.0f, 1.0f}, {1.0f, 0.0f}}, // 右上
+		{{-1.0f, -1.0f, 0.0f, 1.0f}, {0.0f, 1.0f}}, // 左下
+		{{ 1.0f, -1.0f, 0.0f, 1.0f}, {1.0f, 1.0f}}, // 右下
 	};
 
 #pragma endregion
 	
 	VertexBuffer vb;
-	vb.Create(sizeof(verteces), sizeof(verteces[0]));
+	vb.Create(sizeof(vertices), sizeof(vertices[0]));
 	//vb.Create(sizeof(Vector4) * 3, sizeof(Vector4));
 
 	// 頂点リソースにデータを書き込む -------- ★00_07 追加
 	VertexData* pGpuVertices = nullptr;
 	vb.Get()->Map(0, nullptr, reinterpret_cast<void**>(&pGpuVertices));
 
-	for (int i = 0; i < _countof(verteces); ++i) {
-		pGpuVertices[i] = verteces[i];
+	for (int i = 0; i < _countof(vertices); ++i) {
+		pGpuVertices[i] = vertices[i];
 	}
 #pragma endregion
 
@@ -129,12 +130,15 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 // 引数として 空のpipelineState、RootSignature、頂点シェーダーvs、ピクセルシェーダーps を参照で受け取る
 void SetupPipelineState(PipelineState& pipelineState, RootSignature& rs, Shader& vs, Shader& ps) {
 	// InputLayout ----------------------------------------------------
-	D3D12_INPUT_ELEMENT_DESC inputElementDescs[1] = {};
+	D3D12_INPUT_ELEMENT_DESC inputElementDescs[2] = {};
 	inputElementDescs[0].SemanticName = "POSITION";
 	inputElementDescs[0].SemanticIndex = 0;
 	inputElementDescs[0].Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
 	inputElementDescs[0].AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT;
-
+	inputElementDescs[1].SemanticName = "TEXCOORD";
+	inputElementDescs[1].SemanticIndex = 0;
+	inputElementDescs[1].Format = DXGI_FORMAT_R32G32_FLOAT;
+	inputElementDescs[1].AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT;
 	D3D12_INPUT_LAYOUT_DESC inputLayoutDesc{};
 	inputLayoutDesc.pInputElementDescs = inputElementDescs;
 	inputLayoutDesc.NumElements = _countof(inputElementDescs);
