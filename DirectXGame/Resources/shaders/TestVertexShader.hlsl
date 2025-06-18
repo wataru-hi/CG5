@@ -1,16 +1,15 @@
-struct VertexShaderOutPut
-{
-    float32_t4 position : SV_POSITION;
-};
+#include "Test.hlsli"
 
 struct VertexShaderInput
 {
     float32_t4 position : POSITION0;
+    float32_t2 texcoord : TEXCOORD0;
 };
 
-VertexShaderOutPut main(VertexShaderInput input)
+VertexShaderOutput main(VertexShaderInput input)
 {
-    VertexShaderOutPut output;
+    VertexShaderOutput output;
     output.position = input.position;
+    output.texcooed = input.texcoord;
     return output;
 }

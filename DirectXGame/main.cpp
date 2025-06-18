@@ -27,7 +27,7 @@ uint16_t indices[] = {
 
 // Windowsアプリのエントリーポイント
 int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
-
+	
 	KamataEngine::Initialize(L"LE3D_12_ヒガ_ワタル");
 
 	DirectXCommon* dxCommon = DirectXCommon::GetInstance();
