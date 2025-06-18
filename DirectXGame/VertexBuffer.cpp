@@ -3,6 +3,7 @@
 
 #include <cassert>  // assert
 #include <d3dx12.h> // ID3D~、D3D~
+#include "indexBuffer.h"
 
 using namespace KamataEngine;
 

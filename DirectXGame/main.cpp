@@ -12,6 +12,12 @@ using namespace KamataEngine;
 // 関数プロトタイプ宣言
 void SetupPipelineState(PipelineState& pipelineState, RootSignature& rs, Shader& vs, Shader& ps);
 
+// リソースの確保含め、頂点情報を柔軟に対応できるように VertexData構造体を新たに作成する
+// Vertex4 => VertexData に変更して利用する
+struct VertexData {
+	Vector4 position;
+};
+
 // Windowsアプリのエントリーポイント
 int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 
@@ -51,18 +57,27 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 #pragma endregion
 
 #pragma region VertexBuffer(VertexResource, VertexResourceView)
-	VertexBuffer vb;
-	vb.Create(sizeof(Vector4) * 3, sizeof(Vector4));
-#pragma endregion
-
 #pragma region VertexData
-	// 頂点データの書き込み
-	Vector4* vertexData = nullptr;
-	vb.Get()->Map(0, nullptr, reinterpret_cast<void**>(&vertexData));
-	vertexData[0] = {-0.5f, -0.5f, 0.0f, 1.0f}; // 左下
-	vertexData[1] = {0.0f, 0.5f, 0.0f, 1.0f};   // 上
-	vertexData[2] = {0.5f, -0.5f, 0.0f, 1.0f};  // 右下
-	vb.Get()->Unmap(0, nullptr);
+
+	VertexData verteces[] = {
+		{0.0f,  0.5f,  0.0f, 1.0f}, // 上
+		{0.5f,  -0.5f, 0.0f, 1.0f}, // 右下
+		{-0.5f, -0.5f, 0.0f, 1.0f}, // 左下
+	};
+
+#pragma endregion
+	
+	VertexBuffer vb;
+	vb.Create(sizeof(verteces), sizeof(verteces[0]));
+	//vb.Create(sizeof(Vector4) * 3, sizeof(Vector4));
+
+	// 頂点リソースにデータを書き込む -------- ★00_07 追加
+	VertexData* pGpuVertices = nullptr;
+	vb.Get()->Map(0, nullptr, reinterpret_cast<void**>(&pGpuVertices));
+
+	for (int i = 0; i < _countof(verteces); ++i) {
+		pGpuVertices[i] = verteces[i];
+	}
 #pragma endregion
 
 	while (true) {
@@ -86,6 +101,7 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 
 	return 0;
 }
+
 
 // インプットレイアウト、ブレンドステート、ラスタライザステート
 // 引数として 空のpipelineState、RootSignature、頂点シェーダーvs、ピクセルシェーダーps を参照で受け取る
