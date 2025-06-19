@@ -19,11 +19,6 @@ struct VertexData {
 	Vector4 position;
 };
 
-uint16_t indices[] = {
-    0, 1, 2, // 1枚目の三角形（左上, 右上, 左下）
-    2, 1, 3  // 2枚目の三角形（左下, 右上, 右下）
-};
-
 // Windowsアプリのエントリーポイント
 int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 
@@ -88,6 +83,11 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 #pragma endregion
 
 #pragma region IndexBuffer
+	uint16_t indices[] = {
+	    0, 1, 2, // 1枚目の三角形（左上, 右上, 左下）
+	    2, 1, 3  // 2枚目の三角形（左下, 右上, 右下）
+	};
+
 	// IndexBuffer(IndexResource, IndexResourceView)の生成
 	IndexBuffer ib;
 	ib.Create(sizeof(indices), sizeof(indices[0]));
