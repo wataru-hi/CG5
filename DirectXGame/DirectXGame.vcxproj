@@ -212,6 +212,9 @@ copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClInclude Include="Shader.h" />
     <ClInclude Include="VertexBuffer.h" />
   </ItemGroup>
+  <ItemGroup>
+    <Text Include="..\..\..\Users\K023g\Downloads\message (1).txt" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
