@@ -1,7 +1,7 @@
 #include "KamataEngine.h"
-#include "Shader.h"
-#include "RootSignature.h"
 #include "PipelineState.h"
+#include "RootSignature.h"
+#include "Shader.h"
 #include "VertexBuffer.h"
 #include "indexBuffer.h"
 
@@ -20,9 +20,15 @@ struct VertexData {
 	Vector2 texcoord;
 };
 
+// 関数プロトタイプ宣言 ----------------------------------------------------
+// PipelineStateObjectの生成
+void SetupPipelineState(PipelineState& pipelineState, RootSignature& rs, Shader& vs, Shader& ps);
+// RenderTextureResourceの生成
+ID3D12Resource* CreateRenderTextureResource(ID3D12Device* device, uint32_t width, uint32_t height, DXGI_FORMAT format, const FLOAT* clearColor);
+
 // Windowsアプリのエントリーポイント
 int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
-	
+
 	KamataEngine::Initialize(L"LE3D_12_ヒガ_ワタル");
 
 	DirectXCommon* dxCommon = DirectXCommon::GetInstance();
@@ -62,17 +68,17 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 #pragma region VertexData
 
 	VertexData vertices[] = {
-		{{-1.0f,  1.0f, 0.0f, 1.0f}, {0.0f, 0.0f}}, // 左上
-		{{ 1.0f,  1.0f, 0.0f, 1.0f}, {1.0f, 0.0f}}, // 右上
-		{{-1.0f, -1.0f, 0.0f, 1.0f}, {0.0f, 1.0f}}, // 左下
-		{{ 1.0f, -1.0f, 0.0f, 1.0f}, {1.0f, 1.0f}}, // 右下
+	    {{-1.0f, 1.0f, 0.0f, 1.0f},  {0.0f, 0.0f}}, // 左上
+	    {{1.0f, 1.0f, 0.0f, 1.0f},   {1.0f, 0.0f}}, // 右上
+	    {{-1.0f, -1.0f, 0.0f, 1.0f}, {0.0f, 1.0f}}, // 左下
+	    {{1.0f, -1.0f, 0.0f, 1.0f},  {1.0f, 1.0f}}, // 右下
 	};
 
 #pragma endregion
-	
+
 	VertexBuffer vb;
 	vb.Create(sizeof(vertices), sizeof(vertices[0]));
-	//vb.Create(sizeof(Vector4) * 3, sizeof(Vector4));
+	// vb.Create(sizeof(Vector4) * 3, sizeof(Vector4));
 
 	// 頂点リソースにデータを書き込む -------- ★00_07 追加
 	VertexData* pGpuVertices = nullptr;
@@ -102,6 +108,40 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	}
 #pragma endregion
 
+#pragma region レンダーターゲット、ヒープ、ビューの作成
+	// Resource生成、Heap生成、View生成 で再利用される変数の準備
+	ID3D12Device* device = dxCommon->GetDevice();
+	HRESULT hr;
+
+	// 0. RenderTextureResourceの作成
+
+	// 画面クリア色 ※分かりやすいように赤とする
+	const FLOAT kRenderTargetClearColor[4] = {1.0f, 0.0f, 0.0f, 1.0f};
+
+	ID3D12Resource* renderTextureResource = CreateRenderTextureResource(device, WinApp::kWindowWidth, WinApp::kWindowHeight, DXGI_FORMAT_R8G8B8A8_UNORM_SRGB, kRenderTargetClearColor);
+
+	// 1. RTV用のDescriptorHeapを作成する
+	ID3D12DescriptorHeap* rtvDescriptorHeap = nullptr;
+
+	D3D12_DESCRIPTOR_HEAP_DESC rtvDescriptorHeapDesc{};
+	rtvDescriptorHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV; // RTV
+	rtvDescriptorHeapDesc.NumDescriptors = 1;                    // Descriptorの個数は 1
+
+	hr = device->CreateDescriptorHeap(&rtvDescriptorHeapDesc, IID_PPV_ARGS(&rtvDescriptorHeap));
+	assert(SUCCEEDED(hr));
+
+	// CPU側からみたHANDLEを取得しておく
+	D3D12_CPU_DESCRIPTOR_HANDLE rtvHandleCPU = rtvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
+
+	// 2. RTV用のViewの生成
+	device->CreateRenderTargetView(
+		renderTextureResource, // Viewと関連付けたいリソース
+		nullptr,               // RTVの詳細情報(Desc:Description、構成内容の記述)
+								// ※RTVの場合 nullptrにするとDirectX12が自動で推測してくれる
+		rtvHandleCPU           // RTV用ディスクリプタヒープの CPU Handle
+	);
+#pragma endregion
+
 	while (true) {
 		if (KamataEngine::Update()) {
 			break;
@@ -125,7 +165,6 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	return 0;
 }
 
-
 // インプットレイアウト、ブレンドステート、ラスタライザステート
 // 引数として 空のpipelineState、RootSignature、頂点シェーダーvs、ピクセルシェーダーps を参照で受け取る
 void SetupPipelineState(PipelineState& pipelineState, RootSignature& rs, Shader& vs, Shader& ps) {
@@ -146,7 +185,7 @@ void SetupPipelineState(PipelineState& pipelineState, RootSignature& rs, Shader&
 	// blendDesc
 	D3D12_BLEND_DESC blendDesc{};
 	blendDesc.RenderTarget[0].RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
-	
+
 	// ラスタライザーステートの設定
 	D3D12_RASTERIZER_DESC rasterizerDesc{};
 	rasterizerDesc.CullMode = D3D12_CULL_MODE_BACK;  // 裏面をカリング
@@ -180,4 +219,45 @@ void SetupPipelineState(PipelineState& pipelineState, RootSignature& rs, Shader&
 
 	// 準備は整った。PSOを生成する
 	pipelineState.Create(graphicsPipelineStateDesc);
+}
+
+// RenderTextureResourceの生成
+ID3D12Resource* CreateRenderTextureResource(ID3D12Device* device, uint32_t width, uint32_t height, DXGI_FORMAT clearFormat, const FLOAT* clearColor) {
+
+	// 1. 生成するRenderTextureのDescの設定
+	D3D12_RESOURCE_DESC resourceDesc{};
+	resourceDesc.Width = UINT(width);                             // RenderTextureの幅
+	resourceDesc.Height = UINT(height);                           // Textureの高さ
+	resourceDesc.MipLevels = 1;                                   // mipmapの数
+	resourceDesc.DepthOrArraySize = 1;                            // 奥行 or 配列Textureの配列数
+	resourceDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;        // TextureのFormat
+	resourceDesc.SampleDesc.Count = 1;                            // サンプリングカウント1固定
+	resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;  // Textureの次元数。普段使っているのは2次元
+	resourceDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET; // RenderTargetとして使う通知
+
+	// 2. 利用するHeapの設定
+	D3D12_HEAP_PROPERTIES heapProperties{};
+	heapProperties.Type = D3D12_HEAP_TYPE_DEFAULT; // VRAM上に作る
+
+	// 3. ClaarValueの用意
+	D3D12_CLEAR_VALUE clearValue;
+	clearValue.Format = clearFormat;
+	clearValue.Color[0] = clearColor[0];
+	clearValue.Color[1] = clearColor[1];
+	clearValue.Color[2] = clearColor[2];
+	clearValue.Color[3] = clearColor[3];
+
+	// 4. RenderTextureResourceの生成
+	ID3D12Resource* resource = nullptr;
+	HRESULT hr = device->CreateCommittedResource(
+	    &heapProperties,                            // Heapの設定
+	    D3D12_HEAP_FLAG_NONE,                       // Heapの特殊な設定
+	    &resourceDesc,                              // Resourceの設定
+	    D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, // Pixel Shader でアクセスできるようにする
+	    &clearValue,                                // Clear最適値
+	    IID_PPV_ARGS(&resource)                     // 作成するResourceポインタへのポインタ
+	);
+	assert(SUCCEEDED(hr));
+
+	return resource;
 }
