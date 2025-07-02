@@ -266,7 +266,6 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		// SRVのDescriptorTableの先頭を反映 ※ t0 は rootParameter[0] である
 		commandList->SetGraphicsRootDescriptorTable(0, srvHandleGPU);
 
-		// 画面を覆うポリゴンの描画
 		commandList->DrawIndexedInstanced(_countof(indices), 1, 0, 0, 0);
 
 		// 描画終了
