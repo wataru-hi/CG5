@@ -10,9 +10,6 @@
 
 using namespace KamataEngine;
 
-// 関数プロトタイプ宣言
-void SetupPipelineState(PipelineState& pipelineState, RootSignature& rs, Shader& vs, Shader& ps);
-
 // リソースの確保含め、頂点情報を柔軟に対応できるように VertexData構造体を新たに作成する
 // Vertex4 => VertexData に変更して利用する
 struct VertexData {
