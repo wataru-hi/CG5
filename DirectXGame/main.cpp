@@ -118,10 +118,11 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	// 画面クリア色 ※分かりやすいように赤とする
 	const FLOAT kRenderTargetClearColor[4] = {1.0f, 0.0f, 0.0f, 1.0f};
 
-	ID3D12Resource* renderTextureResource = CreateRenderTextureResource(device, WinApp::kWindowWidth, WinApp::kWindowHeight, DXGI_FORMAT_R8G8B8A8_UNORM_SRGB, kRenderTargetClearColor);
+	Microsoft::WRL::ComPtr<ID3D12Resource> renderTextureResource =
+	    CreateRenderTextureResource(device, WinApp::kWindowWidth, WinApp::kWindowHeight, DXGI_FORMAT_R8G8B8A8_UNORM_SRGB, kRenderTargetClearColor);
 
 	// 1. RTV用のDescriptorHeapを作成する
-	ID3D12DescriptorHeap* rtvDescriptorHeap = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> rtvDescriptorHeap = nullptr;
 
 	D3D12_DESCRIPTOR_HEAP_DESC rtvDescriptorHeapDesc{};
 	rtvDescriptorHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV; // RTV
@@ -135,7 +136,7 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 
 	// 2. RTV用のViewの生成
 	device->CreateRenderTargetView(
-		renderTextureResource, // Viewと関連付けたいリソース
+	    renderTextureResource.Get(), // Viewと関連付けたいリソース
 		nullptr,               // RTVの詳細情報(Desc:Description、構成内容の記述)
 								// ※RTVの場合 nullptrにするとDirectX12が自動で推測してくれる
 		rtvHandleCPU           // RTV用ディスクリプタヒープの CPU Handle
@@ -144,10 +145,10 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 
 #pragma region depthStencil_Heap_View_Creation
 	// 0. DepthStencilTextureResourceの作成
-	ID3D12Resource* depthStencilResource = CreateDepthStencilTextureResource(device, WinApp::kWindowWidth, WinApp::kWindowHeight);
+	Microsoft::WRL::ComPtr<ID3D12Resource> depthStencilResource = CreateDepthStencilTextureResource(device, WinApp::kWindowWidth, WinApp::kWindowHeight);
 
 	// 1. DSV用のDescriptorHeapの作成
-	ID3D12DescriptorHeap* dsvDescriptorHeap = nullptr;
+	Microsoft::WRL::ComPtr <ID3D12DescriptorHeap> dsvDescriptorHeap = nullptr;
 	D3D12_DESCRIPTOR_HEAP_DESC dsvDescriptorHeapDesc{};
 	dsvDescriptorHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV; // Heap Type
 	dsvDescriptorHeapDesc.NumDescriptors = 1;                    // Heap の個数
@@ -165,19 +166,19 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D; // 2D Texture
 
 	// DSVHeapの先頭に DSVを作る
-	device->CreateDepthStencilView(depthStencilResource, &dsvDesc, dsvHandleCPU);
+	device->CreateDepthStencilView(depthStencilResource.Get(), &dsvDesc, dsvHandleCPU);
 #pragma endregion
 
 #pragma region ディスクリプターヒープ
 	// 1. SRV用の DescriptorHeapの作成
-	ID3D12DescriptorHeap* srvDescriptorHeap = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> srvDescriptorHeap = nullptr;
 
 	D3D12_DESCRIPTOR_HEAP_DESC srvDescriptorHeapDesc = {};
 	srvDescriptorHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;     // SRV
 	srvDescriptorHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE; // PixelShader から見える
 	srvDescriptorHeapDesc.NumDescriptors = 1;
 
-	hr = device->CreateDescriptorHeap(&srvDescriptorHeapDesc, IID_PPV_ARGS(&srvDescriptorHeap));
+	hr = device->CreateDescriptorHeap(&srvDescriptorHeapDesc, IID_PPV_ARGS(srvDescriptorHeap.GetAddressOf()));
 	assert(SUCCEEDED(hr));
 
 	// CPU側からみたHANDLE、GPU側からみたHANDLEを取得しておく
@@ -192,7 +193,7 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	srvDesc.Texture2D.MipLevels = 1;                                            // MipLevel は 1 しかない
 
 	device->CreateShaderResourceView(
-	    renderTextureResource, // Viewと関連付けたいリソース
+	    renderTextureResource.Get(), // Viewと関連付けたいリソース
 	    &srvDesc,              // SRVの詳細情報(Desc:Description、構成内容の記述)
 	    srvHandleCPU           // SRV用ディスクリプタヒープの CPU Handle
 	);
@@ -207,7 +208,7 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		D3D12_RESOURCE_BARRIER barrier{};
 		barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION; // TranslationBarrierの設定
 		barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;      // フラグは None にしておく
-		barrier.Transition.pResource = renderTextureResource;
+		barrier.Transition.pResource = renderTextureResource.Get();
 		barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE; // 遷移前
 		barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;          // 遷移後
 		commandList->ResourceBarrier(1, &barrier);                                   // バリアを張る
@@ -245,7 +246,7 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		// TransitionBarrierを元に戻し、PixelShaderが扱えるようにする
 		barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION; // TranslationBarrierの設定
 		barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;      // フラグは None にしておく
-		barrier.Transition.pResource = renderTextureResource;
+		barrier.Transition.pResource = renderTextureResource.Get();
 		barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;        // 遷移前
 		barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE; // 遷移後
 		commandList->ResourceBarrier(1, &barrier);                                  // バリアを張る
@@ -261,7 +262,7 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST); // トポロジを設定する
 
 		// 使用するディスクリプタヒープの設定
-		commandList->SetDescriptorHeaps(srvDescriptorHeap->GetDesc().NumDescriptors, &srvDescriptorHeap);
+		commandList->SetDescriptorHeaps(srvDescriptorHeap->GetDesc().NumDescriptors, srvDescriptorHeap.GetAddressOf());
 
 		// SRVのDescriptorTableの先頭を反映 ※ t0 は rootParameter[0] である
 		commandList->SetGraphicsRootDescriptorTable(0, srvHandleGPU);
@@ -271,14 +272,6 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		// 描画終了
 		dxCommon->PostDraw();
 	}
-
-	// 解放
-	renderTextureResource->Release();
-	srvDescriptorHeap->Release();
-	rtvDescriptorHeap->Release();
-
-	depthStencilResource->Release();
-	dsvDescriptorHeap->Release();
 
 	KamataEngine::Finalize();
 

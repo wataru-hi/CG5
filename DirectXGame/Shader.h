@@ -3,6 +3,8 @@
 #include <string>
 #include <d3dcompiler.h>
 #include <dxcapi.h>
+#include <wrl/client.h>
+using Microsoft::WRL::ComPtr;
 
 class Shader {
 public:
@@ -19,7 +21,7 @@ public:
 
 private:
 
-	ID3DBlob* blob_ = nullptr;
+	ComPtr<ID3DBlob> blob_ = nullptr;
 
-	IDxcBlob* dxcBlob_ = nullptr;
+	ComPtr<IDxcBlob> dxcBlob_ = nullptr;
 };

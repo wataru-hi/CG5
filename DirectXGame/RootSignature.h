@@ -1,5 +1,7 @@
 #pragma once
 #include <d3d12.h> // ID3D12RootSignature
+#include <wrl/client.h>
+using Microsoft::WRL::ComPtr;
 
 class RootSignature {
 public:
@@ -15,5 +17,5 @@ public:
 	~RootSignature();
 
 private:
-	ID3D12RootSignature* rootSignature_ = nullptr;
+	ComPtr<ID3D12RootSignature> rootSignature_ = nullptr;
 };

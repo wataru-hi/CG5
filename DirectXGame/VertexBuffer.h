@@ -1,6 +1,9 @@
 #pragma once
 
 #include <d3dx12.h> // ID3D12Resource, D3D12_VERTEX_BUFFER_VIEW
+#include <wrl/client.h>
+using Microsoft::WRL::ComPtr;
+
 
 class VertexBuffer {
 public:
@@ -17,6 +20,6 @@ public:
 	~VertexBuffer();
 
 private:
-	ID3D12Resource* vertexBuffer_ = nullptr;      // 頂点バッファ
+	ComPtr<ID3D12Resource> vertexBuffer_ = nullptr;      // 頂点バッファ
 	D3D12_VERTEX_BUFFER_VIEW vertexBufferView_{}; // 頂点バッファビュー
 };

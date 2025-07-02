@@ -1,5 +1,7 @@
 #pragma once
 #include<d3d12.h> // ID3D12PipelineState
+#include <wrl/client.h>
+using Microsoft::WRL::ComPtr;
 
     class PipelineState {
 public:
@@ -15,5 +17,5 @@ public:
 
 private:
 	// パイプラインステート
-	ID3D12PipelineState* pipelineState_ = nullptr;
+	ComPtr<ID3D12PipelineState> pipelineState_ = nullptr;
 };

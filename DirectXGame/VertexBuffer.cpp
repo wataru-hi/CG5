@@ -29,7 +29,7 @@ void VertexBuffer::Create(const UINT size, const UINT stride) {
 	vertexResourceDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
 
 	// 実際に頂点リソースを生成する
-	ID3D12Resource* vertexResource = nullptr;
+	ComPtr<ID3D12Resource> vertexResource = nullptr;
 
 	// ★HRESULT 追加
 	HRESULT hr =
@@ -53,7 +53,7 @@ void VertexBuffer::Create(const UINT size, const UINT stride) {
 }
 
 // 生成した頂点バッファーを返す
-ID3D12Resource* VertexBuffer::Get() { return vertexBuffer_; }
+ID3D12Resource* VertexBuffer::Get() { return vertexBuffer_.Get(); }
 
 // 用意済みの頂点バッファービューを返す
 D3D12_VERTEX_BUFFER_VIEW* VertexBuffer::GetView() { return &vertexBufferView_; }
@@ -63,8 +63,5 @@ VertexBuffer::VertexBuffer() {}
 
 // デストラクタ
 VertexBuffer::~VertexBuffer() {
-	if (vertexBuffer_) {
-		vertexBuffer_->Release();
-		vertexBuffer_ = nullptr;
-	}
+	
 }

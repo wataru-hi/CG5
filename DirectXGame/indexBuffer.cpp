@@ -32,7 +32,7 @@ void IndexBuffer::Create(const UINT size, const UINT stride) {
 	indexResourceDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
 
 	// 実際にインデックスリソースを生成する
-	ID3D12Resource* indexResource = nullptr;
+	ComPtr<ID3D12Resource> indexResource = nullptr;
 
 	HRESULT hr =
 	    dxCommon->GetDevice()->CreateCommittedResource(&uploadHeapProperties, D3D12_HEAP_FLAG_NONE, &indexResourceDesc, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&indexResource));
@@ -55,15 +55,11 @@ void IndexBuffer::Create(const UINT size, const UINT stride) {
 }
 
 // 生成したインデックスバッファを返す
-ID3D12Resource* IndexBuffer::Get() { return indexBuffer_; }
+ID3D12Resource* IndexBuffer::Get() { return indexBuffer_.Get(); }
 
 // 用意済みのインデックスバッファビューを返す
 D3D12_INDEX_BUFFER_VIEW* IndexBuffer::GetView() { return &indexBufferView_; }
 
 // デストラクタ
 IndexBuffer::~IndexBuffer() {
-	if (indexBuffer_) {
-		indexBuffer_->Release();
-		indexBuffer_ = nullptr;
-	}
 }

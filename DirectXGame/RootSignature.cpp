@@ -5,10 +5,8 @@
 using namespace KamataEngine;
 
 void RootSignature::Create() {
-	// 既にインスタンスがあるなら解放する // Createメンバ関数が2度実行されたときの対処
 	if (rootSignature_) {
-		rootSignature_->Release();
-		rootSignature_ = nullptr;
+		rootSignature_.Reset();
 	}
 
 	// クラス内で取得するために追加
@@ -63,18 +61,15 @@ void RootSignature::Create() {
 	}
 
 	// バイナリをもとに生成
-	ID3D12RootSignature* rootSignature = nullptr;
+	ComPtr<ID3D12RootSignature> rootSignature = nullptr;
 	hr = dxCommon->GetDevice()->CreateRootSignature(0, signatureBlob->GetBufferPointer(), signatureBlob->GetBufferSize(), IID_PPV_ARGS(&rootSignature));
 	assert(SUCCEEDED(hr));
-
-	// signatureBlob は RootSignatureの生成後解放してもいい
-	signatureBlob->Release();
 
 	// 生成した RootSignature をとっておく
 	rootSignature_ = rootSignature;
 }
 // 生成した RootSignatureを返す
-ID3D12RootSignature* RootSignature::Get() { return rootSignature_; }
+ID3D12RootSignature* RootSignature::Get() { return rootSignature_.Get(); }
 
 // コンストラクタ
 RootSignature::RootSignature() {}
@@ -82,7 +77,6 @@ RootSignature::RootSignature() {}
 // デストラクタ
 RootSignature::~RootSignature() {
 	if (rootSignature_) {
-		rootSignature_->Release();
-		rootSignature_ = nullptr;
+		rootSignature_.Reset();
 	}
 }

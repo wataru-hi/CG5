@@ -6,8 +6,8 @@
 
 
 void Shader::Load(const std::wstring& filePath, const std::wstring& shaderModel) {
-	ID3DBlob* shaderBlob = nullptr;
-	ID3DBlob* errorBlob = nullptr;
+	ComPtr<ID3DBlob> shaderBlob = nullptr;
+	ComPtr<ID3DBlob> errorBlob = nullptr;
 
 	std::string mgShaderModel = ConvertString(shaderModel);
 
@@ -115,20 +115,11 @@ void Shader::LoadDxc(const std::wstring& filePath, const std::wstring& shaderMod
 
 }
 
-ID3DBlob* Shader::GetBlob() { return blob_; }
+ID3DBlob* Shader::GetBlob() { return blob_.Get(); }
 
-IDxcBlob* Shader::GetDxcBlob() { return dxcBlob_; }
+IDxcBlob* Shader::GetDxcBlob() { return dxcBlob_.Get(); }
 
 Shader::Shader() {}
 
 Shader::~Shader() {
-	if (blob_ != nullptr) {
-		blob_->Release();
-		blob_ = nullptr;
-	}
-	if (dxcBlob_ != nullptr)
-	{
-		dxcBlob_->Release();
-		dxcBlob_ = nullptr;
-	}
 }
