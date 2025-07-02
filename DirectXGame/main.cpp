@@ -25,6 +25,9 @@ struct VertexData {
 void SetupPipelineState(PipelineState& pipelineState, RootSignature& rs, Shader& vs, Shader& ps);
 // RenderTextureResourceの生成
 ID3D12Resource* CreateRenderTextureResource(ID3D12Device* device, uint32_t width, uint32_t height, DXGI_FORMAT format, const FLOAT* clearColor);
+// DepthStencilTextureResourceの生成
+ID3D12Resource* CreateDepthStencilTextureResource(ID3D12Device* device, int32_t width, int32_t height);
+
 
 // Windowsアプリのエントリーポイント
 int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
@@ -108,7 +111,7 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	}
 #pragma endregion
 
-#pragma region レンダーターゲット、ヒープ、ビューの作成
+#pragma region RenderTarget_Heap_View_Creation
 	// Resource生成、Heap生成、View生成 で再利用される変数の準備
 	ID3D12Device* device = dxCommon->GetDevice();
 	HRESULT hr;
@@ -142,23 +145,144 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	);
 #pragma endregion
 
+#pragma region depthStencil_Heap_View_Creation
+	// 0. DepthStencilTextureResourceの作成
+	ID3D12Resource* depthStencilResource = CreateDepthStencilTextureResource(device, WinApp::kWindowWidth, WinApp::kWindowHeight);
+
+	// 1. DSV用のDescriptorHeapの作成
+	ID3D12DescriptorHeap* dsvDescriptorHeap = nullptr;
+	D3D12_DESCRIPTOR_HEAP_DESC dsvDescriptorHeapDesc{};
+	dsvDescriptorHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV; // Heap Type
+	dsvDescriptorHeapDesc.NumDescriptors = 1;                    // Heap の個数
+	dsvDescriptorHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;          // DSVはShaderで触らないとする
+
+	hr = device->CreateDescriptorHeap(&dsvDescriptorHeapDesc, IID_PPV_ARGS(&dsvDescriptorHeap));
+	assert(SUCCEEDED(hr));
+
+	// CPU側からみたHANDLEを取得しておく
+	D3D12_CPU_DESCRIPTOR_HANDLE dsvHandleCPU = dsvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
+
+	// 2. DSV用の Viewの生成
+	D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc{};
+	dsvDesc.Format = DXGI_FORMAT_D32_FLOAT;                // 基本的にResourceに合わせる
+	dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D; // 2D Texture
+
+	// DSVHeapの先頭に DSVを作る
+	device->CreateDepthStencilView(depthStencilResource, &dsvDesc, dsvHandleCPU);
+#pragma endregion
+
+#pragma region ディスクリプターヒープ
+	// 1. SRV用の DescriptorHeapの作成
+	ID3D12DescriptorHeap* srvDescriptorHeap = nullptr;
+
+	D3D12_DESCRIPTOR_HEAP_DESC srvDescriptorHeapDesc = {};
+	srvDescriptorHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;     // SRV
+	srvDescriptorHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE; // PixelShader から見える
+	srvDescriptorHeapDesc.NumDescriptors = 1;
+
+	hr = device->CreateDescriptorHeap(&srvDescriptorHeapDesc, IID_PPV_ARGS(&srvDescriptorHeap));
+	assert(SUCCEEDED(hr));
+
+	// CPU側からみたHANDLE、GPU側からみたHANDLEを取得しておく
+	D3D12_CPU_DESCRIPTOR_HANDLE srvHandleCPU = srvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
+	D3D12_GPU_DESCRIPTOR_HANDLE srvHandleGPU = srvDescriptorHeap->GetGPUDescriptorHandleForHeapStart();
+
+	// 2. SRV(Shader Resource View)の作成
+	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
+	srvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;                           // RenderTargetResource と同じにする
+	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING; // RGBA値をそのまま Shaderに対応させる
+	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;                      // 2Dテクスチャ
+	srvDesc.Texture2D.MipLevels = 1;                                            // MipLevel は 1 しかない
+
+	device->CreateShaderResourceView(
+	    renderTextureResource, // Viewと関連付けたいリソース
+	    &srvDesc,              // SRVの詳細情報(Desc:Description、構成内容の記述)
+	    srvHandleCPU           // SRV用ディスクリプタヒープの CPU Handle
+	);
+#pragma endregion
+
 	while (true) {
 		if (KamataEngine::Update()) {
 			break;
 		}
 
-		dxCommon->PreDraw();
+		// TransitionBarrierを SRV => RTV に設定する
+		D3D12_RESOURCE_BARRIER barrier{};
+		barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION; // TranslationBarrierの設定
+		barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;      // フラグは None にしておく
+		barrier.Transition.pResource = renderTextureResource;
+		barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE; // 遷移前
+		barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;          // 遷移後
+		commandList->ResourceBarrier(1, &barrier);                                   // バリアを張る
 
-		// コマンドの設定
-		commandList->SetGraphicsRootSignature(rs.Get());
-		commandList->SetPipelineState(pipelineState.Get());
-		commandList->IASetVertexBuffers(0, 1, vb.GetView());
-		commandList->IASetIndexBuffer(ib.GetView());
-		commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+		// 描画先の RTV と DSV を設定する
+		commandList->OMSetRenderTargets(1, &rtvHandleCPU, false, &dsvHandleCPU);
+
+		// Viewportの設定
+		D3D12_VIEWPORT viewport{};
+		viewport.Width = WinApp::kWindowWidth;
+		viewport.Height = WinApp::kWindowHeight;
+		viewport.TopLeftX = 0;
+		viewport.TopLeftY = 0;
+		viewport.MinDepth = 0.0f; // 深度の最小値
+		viewport.MaxDepth = 1.0f; // 深度の最大値
+		commandList->RSSetViewports(1, &viewport);
+
+		// Scissorの設定
+		D3D12_RECT scissorRect{};
+		// 基本的にビューポートと同じ矩形が構成されるようにする
+		scissorRect.left = 0;
+		scissorRect.right = WinApp::kWindowWidth;
+		scissorRect.top = 0;
+		scissorRect.bottom = WinApp::kWindowHeight;
+
+		
+
+		commandList->RSSetScissorRects(1, &scissorRect);
+
+		// 全画面クリア
+		commandList->ClearRenderTargetView(rtvHandleCPU, kRenderTargetClearColor, 0, nullptr);
+		// 指定した深度で画面全体をクリアする
+		commandList->ClearDepthStencilView(dsvHandleCPU, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
+
+		// TransitionBarrierを元に戻し、PixelShaderが扱えるようにする
+		barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION; // TranslationBarrierの設定
+		barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;      // フラグは None にしておく
+		barrier.Transition.pResource = renderTextureResource;
+		barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;        // 遷移前
+		barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE; // 遷移後
+		commandList->ResourceBarrier(1, &barrier);                                  // バリアを張る
+
+		dxCommon->PreDraw();	
+
+		// コマンドを積む
+		commandList->SetGraphicsRootSignature(rs.Get());    // RootSignatureを設定する
+		commandList->SetPipelineState(pipelineState.Get()); // PSOを設定する
+
+		commandList->IASetVertexBuffers(0, 1, vb.GetView());                      // VBVを設定する
+		commandList->IASetIndexBuffer(ib.GetView());                              // IBVを設定する
+		commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST); // トポロジを設定する
+
+		// 使用するディスクリプタヒープの設定
+		commandList->SetDescriptorHeaps(srvDescriptorHeap->GetDesc().NumDescriptors, &srvDescriptorHeap);
+
+		// SRVのDescriptorTableの先頭を反映 ※ t0 は rootParameter[0] である
+		commandList->SetGraphicsRootDescriptorTable(0, srvHandleGPU);
+
+		// 画面を覆うポリゴンの描画
 		commandList->DrawIndexedInstanced(_countof(indices), 1, 0, 0, 0);
 
+		// 描画終了
 		dxCommon->PostDraw();
 	}
+
+	// 解放
+	renderTextureResource->Release();
+	srvDescriptorHeap->Release();
+	rtvDescriptorHeap->Release();
+
+	depthStencilResource->Release();
+	dsvDescriptorHeap->Release();
 
 	KamataEngine::Finalize();
 
@@ -256,6 +380,43 @@ ID3D12Resource* CreateRenderTextureResource(ID3D12Device* device, uint32_t width
 	    D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, // Pixel Shader でアクセスできるようにする
 	    &clearValue,                                // Clear最適値
 	    IID_PPV_ARGS(&resource)                     // 作成するResourceポインタへのポインタ
+	);
+	assert(SUCCEEDED(hr));
+
+	return resource;
+}
+
+ID3D12Resource* CreateDepthStencilTextureResource(ID3D12Device* device, int32_t width, int32_t height) { // 1. 生成するDepthStencilTextureのDescの設定
+	D3D12_RESOURCE_DESC resourceDesc{};
+	resourceDesc.Width = width;                                   // Textureの幅
+	resourceDesc.Height = height;                                 // Textureの高さ
+	resourceDesc.MipLevels = 1;                                   // mipmapの数 DepthStencilなので1でいい
+	resourceDesc.DepthOrArraySize = 1;                            // Textureの配列数 DepthStencilは1でいい
+	resourceDesc.Format = DXGI_FORMAT_D32_FLOAT;                  // DepthStencilとして利用可能なフォーマット
+	                                                              // ※KamataEngineと合わせる
+	resourceDesc.SampleDesc.Count = 1;                            // サンプリングカウント1固定
+	resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;  // 2次元
+	resourceDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL; // DepthStencilとして使う通知
+
+	// 2. 利用するHeapの設定
+	D3D12_HEAP_PROPERTIES heapProperties{};
+	heapProperties.Type = D3D12_HEAP_TYPE_DEFAULT; // VRAM上に作る
+
+	// 深度値のクリア設定
+	D3D12_CLEAR_VALUE depthClearValue{};
+	depthClearValue.DepthStencil.Depth = 1.0f;      // 1.0f(最大値)でクリア
+	depthClearValue.Format = DXGI_FORMAT_D32_FLOAT; // Zバッファ形式、resourceと合わせる
+	                                                // ※KamataEngineと合わせた
+
+	// 3. Resourceの生成
+	ID3D12Resource* resource = nullptr;
+	HRESULT hr = device->CreateCommittedResource(
+	    &heapProperties,                  // Heapの設定
+	    D3D12_HEAP_FLAG_NONE,             // Heapの特殊な設定 ★後で変更？
+	    &resourceDesc,                    // Resourceの設定
+	    D3D12_RESOURCE_STATE_DEPTH_WRITE, // 深度値を書き込み状態にしておく
+	    &depthClearValue,                 // Clear最適値
+	    IID_PPV_ARGS(&resource)           // 作成するResourceポインタへのポインタ
 	);
 	assert(SUCCEEDED(hr));
 
