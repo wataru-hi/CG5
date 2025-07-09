@@ -10,3 +10,22 @@ void WorldTransformEx::UpdateMatrix() {
 	// 定数バッファへ転送する
 	TransferMatrix();
 }
+
+KamataEngine::Matrix4x4 WorldTransformEx::MakeAffineMatrix() { 
+	// Scale Matrix
+	Matrix4x4 matScale = MakeScaleMatrix(scale_);
+
+	// Rotation Matrix
+	Matrix4x4 matRotX = MakeRotateXMatrix(rotation_.x);
+	Matrix4x4 matRotY = MakeRotateYMatrix(rotation_.y);
+	Matrix4x4 matRotZ = MakeRotateZMatrix(rotation_.z);
+	Matrix4x4 matRot = matRotZ * matRotX * matRotY;
+
+	// Translate Matrix
+	Matrix4x4 matTrans = MakeTranslateMatrix(translation_);
+
+	// World Matrix
+	Matrix4x4 matWorld = matScale * matRot * matTrans;
+
+	return matWorld;
+}
