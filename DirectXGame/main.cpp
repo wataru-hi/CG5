@@ -18,6 +18,10 @@ struct VertexData {
 	Vector2 texcoord;
 };
 
+struct PSConstants{
+	BOOL gIsGrayScale;
+};
+
 // 関数プロトタイプ宣言 ----------------------------------------------------
 // PipelineStateObjectの生成
 void SetupPipelineState(PipelineState& pipelineState, RootSignature& rs, Shader& vs, Shader& ps);
@@ -201,7 +205,6 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 #pragma endregion
 
 #pragma region ３Dモデル
-	// アプリで利用する3Dモデル ========
 	// 被写体の準備
 	Model* model = Model::CreateFromOBJ("terrain");
 
@@ -214,6 +217,10 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	camera.Initialize();
 	camera.translation_ = Vector3(0.0f, 1.0f, 0.0f);
 #pragma endregion 
+
+	#pragma region グレースケール
+	bool isGrayScale = true;
+	#pragma endregion
 
 	while (true) {
 		if (KamataEngine::Update()) {
