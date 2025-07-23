@@ -49,7 +49,28 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 
 #pragma region RootSignature
 	RootSignature rs;
-	rs.Create();
+
+	 // ディスクリプタレンジ (SRV用) を定義す
+	D3D12_DESCRIPTOR_RANGE srvDescRange[1]{}; // 先にレンジを宣言
+	srvDescRange[0].BaseShaderRegister = 0;
+	srvDescRange[0].NumDescriptors = 1;
+	srvDescRange[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+	// 「0」から始まる
+	srvDescRange[0].OffsetInDescriptorsFromTableStart = 0;
+
+	// RootSignatureを修正: SRVに加えてCBVも追加
+	// b0 (PSConstants) 用のRootParameterを追加
+	D3D12_ROOT_PARAMETER rootParameters[2] = {};
+	rootParameters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE; // DescriptorTable
+	rootParameters[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;           // PixelShaderで使う
+	rootParameters[0].DescriptorTable.pDescriptorRanges = srvDescRange;           // Rangesは後で設定
+	rootParameters[0].DescriptorTable.NumDescriptorRanges = _countof(srvDescRange); // SRV用
+	// PSConstants用のRootParameter
+	rootParameters[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;    // 定数バッファビュー
+	rootParameters[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL; // PixelShaderで使う
+	rootParameters[1].Descriptor.ShaderRegister = 0;                    // b0レジスタ
+
+	rs.Create(2, rootParameters); // RootParameterの数を2に増やす
 #pragma endregion
 
 #pragma region ShaderCompile
@@ -181,7 +202,7 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	D3D12_DESCRIPTOR_HEAP_DESC srvDescriptorHeapDesc = {};
 	srvDescriptorHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;     // SRV
 	srvDescriptorHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE; // PixelShader から見える
-	srvDescriptorHeapDesc.NumDescriptors = 1;
+	srvDescriptorHeapDesc.NumDescriptors = 2;
 
 	hr = device->CreateDescriptorHeap(&srvDescriptorHeapDesc, IID_PPV_ARGS(srvDescriptorHeap.GetAddressOf()));
 	assert(SUCCEEDED(hr));
@@ -202,6 +223,36 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	    &srvDesc,              // SRVの詳細情報(Desc:Description、構成内容の記述)
 	    srvHandleCPU           // SRV用ディスクリプタヒープの CPU Handle
 	);
+
+	// 3. PSConstants 用の定数バッファリソースの作成
+	Microsoft::WRL::ComPtr<ID3D12Resource> psConstantsResource = nullptr;
+	D3D12_HEAP_PROPERTIES psConstantsHeapProp{};
+	psConstantsHeapProp.Type = D3D12_HEAP_TYPE_UPLOAD; // CPUからGPUへの転送用
+	D3D12_RESOURCE_DESC psConstantsResDesc{};
+	psConstantsResDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+	psConstantsResDesc.Width = (sizeof(PSConstants) + 0xff) & ~0xff; // 256バイトアラインメント
+	psConstantsResDesc.Height = 1;
+	psConstantsResDesc.DepthOrArraySize = 1;
+	psConstantsResDesc.MipLevels = 1;
+	psConstantsResDesc.SampleDesc.Count = 1;
+	psConstantsResDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+	hr = device->CreateCommittedResource(&psConstantsHeapProp, D3D12_HEAP_FLAG_NONE, &psConstantsResDesc, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&psConstantsResource));
+	assert(SUCCEEDED(hr));
+	// PSConstants のマッピング
+	PSConstants* pGpuPSConstants = nullptr;
+	psConstantsResource->Map(0, nullptr, reinterpret_cast<void**>(&pGpuPSConstants));
+	// 4. CBV(Constant Buffer View)の作成 (CBVは1番目のディスクリプタ)
+	//D3D12_CPU_DESCRIPTOR_HANDLE cbvHandleCPU = srvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
+	//cbvHandleCPU.Offset(1, device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV)); // 1つオフセットする
+	D3D12_CPU_DESCRIPTOR_HANDLE cbvHandleCPU = srvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
+	cbvHandleCPU.ptr += device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV) * 1; 
+	D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc{};
+	cbvDesc.BufferLocation = psConstantsResource->GetGPUVirtualAddress();
+	cbvDesc.SizeInBytes = (sizeof(PSConstants) + 0xff) & ~0xff; // 256バイトアラインメント
+	device->CreateConstantBufferView(&cbvDesc, cbvHandleCPU);
+	D3D12_GPU_DESCRIPTOR_HANDLE cbvHandleGPU = srvDescriptorHeap->GetGPUDescriptorHandleForHeapStart();
+	cbvHandleGPU.ptr += device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV) * 1;
+
 #pragma endregion
 
 #pragma region ３Dモデル
@@ -226,6 +277,14 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		if (KamataEngine::Update()) {
 			break;
 		}
+
+		Input::GetInstance()->GetAllKey();
+
+		if (Input::GetInstance()->TriggerKey(DIK_G)) {
+			isGrayScale = !isGrayScale;
+		}
+		// PSConstantsを更新
+		pGpuPSConstants->gIsGrayScale = isGrayScale;
 
 		// world変換行列の定数バッファへの転送
 		worldTransform.rotation_.y += 0.005f;
@@ -296,7 +355,17 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST); // トポロジを設定する
 
 		// 使用するディスクリプタヒープの設定
-		commandList->SetDescriptorHeaps(srvDescriptorHeap->GetDesc().NumDescriptors, srvDescriptorHeap.GetAddressOf());
+		// RootParameter[0] にSRVを設定
+		D3D12_DESCRIPTOR_RANGE descRange{};
+		descRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;               // SRV
+		descRange.NumDescriptors = 1;                                        // SRVを1つ
+		descRange.BaseShaderRegister = 0;                                    // t0
+		descRange.OffsetInDescriptorsFromTableStart = 0;					// SRVはテーブルの先頭 (0番目) から
+
+		commandList->SetDescriptorHeaps(1, srvDescriptorHeap.GetAddressOf());
+
+		// RootParameter[1] にCBVを設定
+		commandList->SetGraphicsRootConstantBufferView(1, psConstantsResource->GetGPUVirtualAddress());
 
 		// SRVのDescriptorTableの先頭を反映 ※ t0 は rootParameter[0] である
 		commandList->SetGraphicsRootDescriptorTable(0, srvHandleGPU);

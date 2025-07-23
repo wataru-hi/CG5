@@ -8,6 +8,8 @@ public:
 	// 生成 (Generate/Create)
 	void Create();
 
+	void Create(UINT numParameters, const D3D12_ROOT_PARAMETER* parameters);
+
 	// ゲッター (Getter)
 	ID3D12RootSignature* Get();
 
