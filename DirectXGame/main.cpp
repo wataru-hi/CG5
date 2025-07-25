@@ -483,6 +483,8 @@ ID3D12Resource* CreateRenderTextureResource(ID3D12Device* device, uint32_t width
 
 	// 4. RenderTextureResourceの生成
 	ID3D12Resource* resource = nullptr;
+
+	
 #ifdef _DEBUG
 	HRESULT hr = device->CreateCommittedResource(
 	    &heapProperties,                            // Heapの設定
@@ -525,8 +527,7 @@ ID3D12Resource* CreateDepthStencilTextureResource(ID3D12Device* device, int32_t 
 	ID3D12Resource* resource = nullptr;
 
 
-#ifdef _DEBUG
-	HRESULT hr = device->CreateCommittedResource(
+	[[maybe_unused]] HRESULT hr = device->CreateCommittedResource(
 	    &heapProperties,                  // Heapの設定
 	    D3D12_HEAP_FLAG_NONE,             // Heapの特殊な設定 ★後で変更？
 	    &resourceDesc,                    // Resourceの設定
@@ -534,8 +535,9 @@ ID3D12Resource* CreateDepthStencilTextureResource(ID3D12Device* device, int32_t 
 	    &depthClearValue,                 // Clear最適値
 	    IID_PPV_ARGS(&resource)           // 作成するResourceポインタへのポインタ
 	);
+#ifdef _DEBUG
 	assert(SUCCEEDED(hr));
-#endif
+#endif // _DEBUG
 
 	return resource;
 }
