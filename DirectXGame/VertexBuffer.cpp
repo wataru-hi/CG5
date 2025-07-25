@@ -9,8 +9,7 @@ using namespace KamataEngine;
 
 // 生成
 void VertexBuffer::Create(const UINT size, const UINT stride) {
-	// クラス内でdxCommonを利用するために追加
-	//DirectXCommon* dxCommon = DirectXCommon::GetInstance();
+	
 
 	// 頂点リソースの生成 ===================================================
 	// 頂点リソース用のヒープの設定
@@ -31,7 +30,9 @@ void VertexBuffer::Create(const UINT size, const UINT stride) {
 	// 実際に頂点リソースを生成する
 	ComPtr<ID3D12Resource> vertexResource = nullptr;
 
-	#ifdef _DRBUG
+	#ifdef _DEBUG
+	// クラス内でdxCommonを利用するために追加
+	DirectXCommon* dxCommon = DirectXCommon::GetInstance();
 
 	// ★HRESULT 追加
 	HRESULT hr =
