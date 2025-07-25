@@ -26,7 +26,6 @@ PixcelShaderOutput main(VertexShaderOutput input)
     if (!gIsGrayScale)
     {
         return output;
-        
     }
     //gray scale
     float32_t value = dot(textureColor.rgb, float32_t3(0.21225f, 0.7154f, 0.0721f));
