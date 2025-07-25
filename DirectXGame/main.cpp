@@ -72,47 +72,6 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 
 	rs.Create(2, rootParameters); // RootParameterの数を2に増やす
 
-#pragma region MainRootSignature
-//	 RootSignature mainRs;
-//	D3D12_ROOT_PARAMETER originalRootParameters[2] = {};
-//	D3D12_DESCRIPTOR_RANGE originalSrvDescRange[1]{};
-//	originalSrvDescRange[0].BaseShaderRegister = 0;
-//	originalSrvDescRange[0].NumDescriptors = 1;
-//	originalSrvDescRange[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-//	originalSrvDescRange[0].OffsetInDescriptorsFromTableStart = 0;
-//	originalRootParameters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-//	originalRootParameters[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
-//	originalRootParameters[0].DescriptorTable.pDescriptorRanges = originalSrvDescRange;
-//	originalRootParameters[0].DescriptorTable.NumDescriptorRanges = _countof(originalSrvDescRange);
-//	originalRootParameters[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
-//	originalRootParameters[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
-//	originalRootParameters[1].Descriptor.ShaderRegister = 0; // b0 for PSConstants
-//	mainRs.Create(_countof(originalRootParameters), originalRootParameters);
-//
-#pragma endregion
-
-#pragma region Vignette用RootSignature
-//
-//	// ▼▼▼ ヴィネット用の新しいRootSignature ▼▼▼
-//	RootSignature vignetteRs;
-//	// ヴィネットシェーダーはt0（入力テクスチャ）とb0（VignetteConstants）を使うから
-//	D3D12_ROOT_PARAMETER vignetteRootParameters[2] = {};
-//	D3D12_DESCRIPTOR_RANGE vignetteSrvDescRange[1]{};
-//	vignetteSrvDescRange[0].BaseShaderRegister = 0;
-//	vignetteSrvDescRange[0].NumDescriptors = 1;
-//	vignetteSrvDescRange[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-//	vignetteSrvDescRange[0].OffsetInDescriptorsFromTableStart = 0;
-//	vignetteRootParameters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-//	vignetteRootParameters[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
-//	vignetteRootParameters[0].DescriptorTable.pDescriptorRanges = vignetteSrvDescRange;
-//	vignetteRootParameters[0].DescriptorTable.NumDescriptorRanges = _countof(vignetteSrvDescRange);
-//	vignetteRootParameters[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
-//	vignetteRootParameters[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
-//	vignetteRootParameters[1].Descriptor.ShaderRegister = 0; // b0 for VignetteConstants (ヴィネットシェーダー内でのb0)
-//	vignetteRs.Create(_countof(vignetteRootParameters), vignetteRootParameters);
-
-#pragma endregion
-
 #pragma endregion
 
 #pragma region ShaderCompile
@@ -124,8 +83,6 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	ps.LoadDxc(L"Resources/shaders/TestPixelShader.hlsl", L"ps_6_0");
 	assert(ps.GetDxcBlob() != nullptr);
 
-	/*Shader vignettePs;
-	vignettePs.LoadDxc(L"Resources/shaders/TestVignettePixelShader.hlsl", L"ps_6_0");*/
 #pragma endregion
 
 #pragma region PipelineStateObject
@@ -149,7 +106,6 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 
 	VertexBuffer vb;
 	vb.Create(sizeof(vertices), sizeof(vertices[0]));
-	// vb.Create(sizeof(Vector4) * 3, sizeof(Vector4));
 
 	// 頂点リソースにデータを書き込む -------- ★00_07 追加
 	VertexData* pGpuVertices = nullptr;
@@ -183,8 +139,6 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	// Resource生成、Heap生成、View生成 で再利用される変数の準備
 	ID3D12Device* device = dxCommon->GetDevice();
 	HRESULT hr;
-
-	// 0. RenderTextureResourceの作成
 
 	// 画面クリア色 ※分かりやすいように赤とする
 	const FLOAT kRenderTargetClearColor[4] = {1.0f, 0.0f, 0.0f, 1.0f};
@@ -287,17 +241,6 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	PSConstants* pGpuPSConstants = nullptr;
 	psConstantsResource->Map(0, nullptr, reinterpret_cast<void**>(&pGpuPSConstants));
 
-	// 4. CBV(Constant Buffer View)の作成 (CBVは1番目のディスクリプタ)
-	
-	//D3D12_CPU_DESCRIPTOR_HANDLE cbvHandleCPU = srvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
-	//cbvHandleCPU.ptr += device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV) * 1;
-	//D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc{};
-	//cbvDesc.BufferLocation = psConstantsResource->GetGPUVirtualAddress();
-	//cbvDesc.SizeInBytes = (sizeof(PSConstants) + 0xff) & ~0xff; // 256バイトアラインメント
-	//device->CreateConstantBufferView(&cbvDesc, cbvHandleCPU);
-	//D3D12_GPU_DESCRIPTOR_HANDLE cbvHandleGPU = srvDescriptorHeap->GetGPUDescriptorHandleForHeapStart();
-	//cbvHandleGPU.ptr += device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV) * 1;
-
 	D3D12_CPU_DESCRIPTOR_HANDLE cbvPsHandleCPU = srvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
 	cbvPsHandleCPU.ptr += device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV) * 1;
 	D3D12_CONSTANT_BUFFER_VIEW_DESC cbvPsDesc{};
@@ -306,38 +249,6 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	device->CreateConstantBufferView(&cbvPsDesc, cbvPsHandleCPU);
 	D3D12_GPU_DESCRIPTOR_HANDLE cbvPsHandleGPU = srvDescriptorHeap->GetGPUDescriptorHandleForHeapStart();
 	cbvPsHandleGPU.ptr += device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV) * 1;
-
-#pragma region Vignette用DescriptorHeap
-
-	//Microsoft::WRL::ComPtr<ID3D12Resource> vignetteConstantsResource = nullptr;
-	//D3D12_HEAP_PROPERTIES vignetteConstantsHeapProp{};
-	//vignetteConstantsHeapProp.Type = D3D12_HEAP_TYPE_UPLOAD;
-	//D3D12_RESOURCE_DESC vignetteConstantsResDesc{};
-	//vignetteConstantsResDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-	//vignetteConstantsResDesc.Width = (sizeof(VignetteConstants) + 0xff) & ~0xff;
-	//vignetteConstantsResDesc.Height = 1;
-	//vignetteConstantsResDesc.DepthOrArraySize = 1;
-	//vignetteConstantsResDesc.MipLevels = 1;
-	//vignetteConstantsResDesc.SampleDesc.Count = 1;
-	//vignetteConstantsResDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-	//hr = device->CreateCommittedResource(
-	//    &vignetteConstantsHeapProp, D3D12_HEAP_FLAG_NONE, &vignetteConstantsResDesc, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&vignetteConstantsResource));
-	//assert(SUCCEEDED(hr));
-	//VignetteConstants* pGpuVignetteConstants = nullptr;
-	//vignetteConstantsResource->Map(0, nullptr, reinterpret_cast<void**>(&pGpuVignetteConstants));
-
-	//// CBV(Constant Buffer View)の作成 (VignetteConstants用、2番目のディスクリプタ)
-	//D3D12_CPU_DESCRIPTOR_HANDLE cbvVignetteHandleCPU = srvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
-	//cbvVignetteHandleCPU.ptr += device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV) * 2;
-
-	//D3D12_CONSTANT_BUFFER_VIEW_DESC cbvVignetteDesc{};
-	//cbvVignetteDesc.BufferLocation = vignetteConstantsResource->GetGPUVirtualAddress();
-	//cbvVignetteDesc.SizeInBytes = (sizeof(VignetteConstants) + 0xff) & ~0xff;
-	//device->CreateConstantBufferView(&cbvVignetteDesc, cbvVignetteHandleCPU);
-	//D3D12_GPU_DESCRIPTOR_HANDLE cbvVignetteHandleGPU = srvDescriptorHeap->GetGPUDescriptorHandleForHeapStart();
-	//cbvVignetteHandleGPU.ptr += device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV) * 2;
-
-#pragma endregion
 
 #pragma endregion
 
@@ -357,10 +268,6 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 
 #pragma region PostEffect
 	bool isGrayScale = true;
-	//float vignetteIntensity = 0.5f; // ヴィネットの強さの初期値
-	//float vignetteRadius = 0.4f;    // ヴィネットの中心からの範囲の初期値
-	//bool isVignetteActive = true;   // 
-
 #pragma endregion
 
 	while (true) {
@@ -376,47 +283,6 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 
 		// PSConstantsを更新
 		pGpuPSConstants->gIsGrayScale = isGrayScale;
-
-
-
-		//if (Input::GetInstance()->TriggerKey(DIK_V)) {
-		//	isVignetteActive = !isVignetteActive;
-		//}
-		//if (Input::GetInstance()->PushKey(DIK_Q)) {
-		//	vignetteIntensity += 0.005f;
-		//	if (vignetteIntensity > 1.0f) {
-		//		vignetteIntensity = 1.0f;
-		//	}
-		//}
-		//if (Input::GetInstance()->PushKey(DIK_A)) {
-		//	vignetteIntensity -= 0.005f;
-		//	if (vignetteIntensity < 0.0f) {
-		//		vignetteIntensity = 0.0f;
-		//	}
-		//}
-		//if (Input::GetInstance()->PushKey(DIK_W)) {
-		//	vignetteRadius += 0.005f;
-		//	if (vignetteRadius > 1.0f) {
-		//		vignetteRadius = 1.0f;
-		//	}
-		//}
-		//if (Input::GetInstance()->PushKey(DIK_S)) {
-		//	vignetteRadius -= 0.005f;
-		//	if (vignetteRadius < 0.0f) {
-		//		vignetteRadius = 0.0f;
-		//	}
-		//}
-
-		//// ヴィネットの定数バッファを更新
-		//if (isVignetteActive) {
-		//	pGpuVignetteConstants->gVignetteIntensity = vignetteIntensity;
-		//	pGpuVignetteConstants->gVignetteRadius = vignetteRadius;
-		//} else {
-		//	pGpuVignetteConstants->gVignetteIntensity = 0.0f;
-		//	pGpuVignetteConstants->gVignetteRadius = 0.0f;
-		//}
-
-
 
 		// world変換行列の定数バッファへの転送
 		worldTransform.rotation_.y += 0.005f;
@@ -494,10 +360,6 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 
 		dxCommon->PreDraw();	
 
-		//// コマンドを積む
-		//commandList->SetGraphicsRootSignature(vignetteRs.Get()); // RootSignatureを設定する
-		//commandList->SetPipelineState(vignettePipelineState.Get()); // PSOを設定する
-
 		commandList->SetGraphicsRootSignature(rs.Get());
 		commandList->SetPipelineState(pipelineState.Get());
 
@@ -505,23 +367,12 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		commandList->IASetIndexBuffer(ib.GetView());                              // IBVを設定する
 		commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST); // トポロジを設定する
 
-		//// 使用するディスクリプタヒープの設定
-		//// RootParameter[0] にSRVを設定
-		//D3D12_DESCRIPTOR_RANGE descRange{};
-		//descRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;               // SRV
-		//descRange.NumDescriptors = 1;                                        // SRVを1つ
-		//descRange.BaseShaderRegister = 0;                                    // t0
-		//descRange.OffsetInDescriptorsFromTableStart = 0;					// SRVはテーブルの先頭 (0番目) から
-
 		commandList->SetDescriptorHeaps(1, srvDescriptorHeap.GetAddressOf());
 
 		// ヴィネットシェーダーのt0に、モデルが描画されたレンダーテクスチャをSRVとして設定
 		commandList->SetGraphicsRootDescriptorTable(0, srvHandleGPU);
 		// RootParameter[1] にCBVを設定
 		commandList->SetGraphicsRootConstantBufferView(1, psConstantsResource->GetGPUVirtualAddress());
-
-		// SRVのDescriptorTableの先頭を反映 ※ t0 は rootParameter[0] である
-		//commandList->SetGraphicsRootDescriptorTable(0, srvHandleGPU);
 
 		commandList->DrawIndexedInstanced(_countof(indices), 1, 0, 0, 0);
 
