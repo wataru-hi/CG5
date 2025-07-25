@@ -128,7 +128,7 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 
 	// IndexBuffer(IndexResource, IndexResourceView)の生成
 	IndexBuffer ib;
-	ib.Create(sizeof(indices), sizeof(indices[0]));
+	ib.Create(sizeof(indices), sizeof(uint16_t));
 
 	// 頂点インデックスリソースにデータを書き込む
 	uint16_t* pGpuIndices = nullptr;
