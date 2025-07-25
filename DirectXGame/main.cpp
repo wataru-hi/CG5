@@ -485,8 +485,8 @@ ID3D12Resource* CreateRenderTextureResource(ID3D12Device* device, uint32_t width
 	ID3D12Resource* resource = nullptr;
 
 	
-#ifdef _DEBUG
-	HRESULT hr = device->CreateCommittedResource(
+
+	[[maybe_unused]] HRESULT hr = device->CreateCommittedResource(
 	    &heapProperties,                            // Heapの設定
 	    D3D12_HEAP_FLAG_NONE,                       // Heapの特殊な設定
 	    &resourceDesc,                              // Resourceの設定
@@ -494,6 +494,7 @@ ID3D12Resource* CreateRenderTextureResource(ID3D12Device* device, uint32_t width
 	    &clearValue,                                // Clear最適値
 	    IID_PPV_ARGS(&resource)                     // 作成するResourceポインタへのポインタ
 	);
+#ifdef _DEBUG
 	assert(SUCCEEDED(hr));
 #endif
 
