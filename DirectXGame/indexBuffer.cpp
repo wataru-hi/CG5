@@ -11,10 +11,10 @@ void IndexBuffer::Create(const UINT size, const UINT stride) {
 	// strideの値によって、1つのインデックスのフォーマットを決める
 	assert(stride == 2 || stride == 4); // 2byte or 4byte のみ受け付ける
 	DXGI_FORMAT format = (stride == 2) ? DXGI_FORMAT_R16_UINT : DXGI_FORMAT_R32_UINT;
-
+#ifdef _DEBUG
 	// クラス内でdxCommonを利用するために追加
 	DirectXCommon* dxCommon = DirectXCommon::GetInstance();
-
+	#endif
 	// インデックスリソースの生成 =================================================
 	// インデックスリソース用のヒープの設定
 	D3D12_HEAP_PROPERTIES uploadHeapProperties{};
@@ -33,10 +33,13 @@ void IndexBuffer::Create(const UINT size, const UINT stride) {
 
 	// 実際にインデックスリソースを生成する
 	ComPtr<ID3D12Resource> indexResource = nullptr;
+#ifdef  _DEBUG
+
 
 	HRESULT hr =
 	    dxCommon->GetDevice()->CreateCommittedResource(&uploadHeapProperties, D3D12_HEAP_FLAG_NONE, &indexResourceDesc, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&indexResource));
 	assert(SUCCEEDED(hr)); // うまくいかなかったときは起動できない
+#endif//  _DEBUG
 
 	// 生成したインデックスリソースをとっておく
 	indexBuffer_ = indexResource;

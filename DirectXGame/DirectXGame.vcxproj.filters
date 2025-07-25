@@ -80,9 +80,6 @@
     <FxCompile Include="Resources\shaders\TestVertexShader.hlsl">
       <Filter>シェーダー ファイル</Filter>
     </FxCompile>
-    <FxCompile Include="Resources\shaders\TestVignettePixelShader.hlsl">
-      <Filter>シェーダー ファイル</Filter>
-    </FxCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="Resources\shaders\Sprite.hlsli">

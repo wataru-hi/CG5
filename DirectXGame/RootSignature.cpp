@@ -1,6 +1,6 @@
 #include "RootSignature.h"
-#include "kamataEngine.h"
 #include "PipelineState.h"
+#include "kamataEngine.h"
 
 using namespace KamataEngine;
 
@@ -57,14 +57,17 @@ void RootSignature::Create() {
 
 	if (FAILED(hr)) {
 		DebugText::GetInstance()->ConsolePrintf(reinterpret_cast<char*>(errorBlob->GetBufferPointer()));
+#ifdef _DEBUG
 		assert(false);
+#endif
 	}
 
 	// バイナリをもとに生成
 	ComPtr<ID3D12RootSignature> rootSignature = nullptr;
 	hr = dxCommon->GetDevice()->CreateRootSignature(0, signatureBlob->GetBufferPointer(), signatureBlob->GetBufferSize(), IID_PPV_ARGS(&rootSignature));
+#ifdef _DEBUG
 	assert(SUCCEEDED(hr));
-
+#endif
 	// 生成した RootSignature をとっておく
 	rootSignature_ = rootSignature;
 }
@@ -103,11 +106,15 @@ void RootSignature::Create(UINT numParameters, const D3D12_ROOT_PARAMETER* param
 
 	if (FAILED(hr)) {
 		DebugText::GetInstance()->ConsolePrintf(reinterpret_cast<char*>(errorBlob->GetBufferPointer()));
+#ifdef _DEBUG
 		assert(false);
+#endif
 	}
 
 	hr = dxCommon->GetDevice()->CreateRootSignature(0, signatureBlob->GetBufferPointer(), signatureBlob->GetBufferSize(), IID_PPV_ARGS(&rootSignature_));
+#ifdef _DEBUG
 	assert(SUCCEEDED(hr));
+#endif
 }
 // 生成した RootSignatureを返す
 ID3D12RootSignature* RootSignature::Get() { return rootSignature_.Get(); }

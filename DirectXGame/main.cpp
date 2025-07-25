@@ -77,11 +77,15 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 #pragma region ShaderCompile
 	Shader vs;
 	vs.LoadDxc(L"Resources/shaders/TestVertexShader.hlsl", L"vs_6_0");
+#ifdef _DEBUG
 	assert(vs.GetDxcBlob() != nullptr);
+#endif
 
 	Shader ps;
 	ps.LoadDxc(L"Resources/shaders/TestPixelShader.hlsl", L"ps_6_0");
+#ifdef _DEBUG
 	assert(ps.GetDxcBlob() != nullptr);
+#endif
 
 #pragma endregion
 
@@ -154,7 +158,9 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	rtvDescriptorHeapDesc.NumDescriptors = 1;                    // Descriptorの個数は 1
 
 	hr = device->CreateDescriptorHeap(&rtvDescriptorHeapDesc, IID_PPV_ARGS(&rtvDescriptorHeap));
+#ifdef _DEBUG
 	assert(SUCCEEDED(hr));
+#endif
 
 	// CPU側からみたHANDLEを取得しておく
 	D3D12_CPU_DESCRIPTOR_HANDLE rtvHandleCPU = rtvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
@@ -180,7 +186,9 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	dsvDescriptorHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;          // DSVはShaderで触らないとする
 
 	hr = device->CreateDescriptorHeap(&dsvDescriptorHeapDesc, IID_PPV_ARGS(&dsvDescriptorHeap));
+#ifdef _DEBUG
 	assert(SUCCEEDED(hr));
+#endif
 
 	// CPU側からみたHANDLEを取得しておく
 	D3D12_CPU_DESCRIPTOR_HANDLE dsvHandleCPU = dsvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
@@ -204,7 +212,9 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	srvDescriptorHeapDesc.NumDescriptors = 3;
 
 	hr = device->CreateDescriptorHeap(&srvDescriptorHeapDesc, IID_PPV_ARGS(srvDescriptorHeap.GetAddressOf()));
+#ifdef _DEBUG
 	assert(SUCCEEDED(hr));
+#endif
 
 	// CPU側からみたHANDLE、GPU側からみたHANDLEを取得しておく
 	D3D12_CPU_DESCRIPTOR_HANDLE srvHandleCPU = srvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
@@ -236,7 +246,9 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	psConstantsResDesc.SampleDesc.Count = 1;
 	psConstantsResDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
 	hr = device->CreateCommittedResource(&psConstantsHeapProp, D3D12_HEAP_FLAG_NONE, &psConstantsResDesc, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&psConstantsResource));
+#ifdef _DEBUG
 	assert(SUCCEEDED(hr));
+#endif
 	// PSConstants のマッピング
 	PSConstants* pGpuPSConstants = nullptr;
 	psConstantsResource->Map(0, nullptr, reinterpret_cast<void**>(&pGpuPSConstants));
@@ -445,7 +457,7 @@ void SetupPipelineState(PipelineState& pipelineState, RootSignature& rs, Shader&
 
 // RenderTextureResourceの生成
 ID3D12Resource* CreateRenderTextureResource(ID3D12Device* device, uint32_t width, uint32_t height, DXGI_FORMAT clearFormat, const FLOAT* clearColor) {
-
+	UNREFERENCED_PARAMETER(device);
 	// 1. 生成するRenderTextureのDescの設定
 	D3D12_RESOURCE_DESC resourceDesc{};
 	resourceDesc.Width = UINT(width);                             // RenderTextureの幅
@@ -471,6 +483,7 @@ ID3D12Resource* CreateRenderTextureResource(ID3D12Device* device, uint32_t width
 
 	// 4. RenderTextureResourceの生成
 	ID3D12Resource* resource = nullptr;
+#ifdef _DEBUG
 	HRESULT hr = device->CreateCommittedResource(
 	    &heapProperties,                            // Heapの設定
 	    D3D12_HEAP_FLAG_NONE,                       // Heapの特殊な設定
@@ -480,11 +493,13 @@ ID3D12Resource* CreateRenderTextureResource(ID3D12Device* device, uint32_t width
 	    IID_PPV_ARGS(&resource)                     // 作成するResourceポインタへのポインタ
 	);
 	assert(SUCCEEDED(hr));
+#endif
 
 	return resource;
 }
 
 ID3D12Resource* CreateDepthStencilTextureResource(ID3D12Device* device, int32_t width, int32_t height) { // 1. 生成するDepthStencilTextureのDescの設定
+	UNREFERENCED_PARAMETER(device);
 	D3D12_RESOURCE_DESC resourceDesc{};
 	resourceDesc.Width = width;                                   // Textureの幅
 	resourceDesc.Height = height;                                 // Textureの高さ
@@ -508,6 +523,9 @@ ID3D12Resource* CreateDepthStencilTextureResource(ID3D12Device* device, int32_t 
 
 	// 3. Resourceの生成
 	ID3D12Resource* resource = nullptr;
+
+
+#ifdef _DEBUG
 	HRESULT hr = device->CreateCommittedResource(
 	    &heapProperties,                  // Heapの設定
 	    D3D12_HEAP_FLAG_NONE,             // Heapの特殊な設定 ★後で変更？
@@ -517,6 +535,7 @@ ID3D12Resource* CreateDepthStencilTextureResource(ID3D12Device* device, int32_t 
 	    IID_PPV_ARGS(&resource)           // 作成するResourceポインタへのポインタ
 	);
 	assert(SUCCEEDED(hr));
+#endif
 
 	return resource;
 }

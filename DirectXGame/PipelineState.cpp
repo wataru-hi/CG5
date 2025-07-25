@@ -5,13 +5,19 @@ using namespace KamataEngine;
 
 // PipelineStateを生成する
 void PipelineState::Create(D3D12_GRAPHICS_PIPELINE_STATE_DESC graphicsPipelineStateDesc) {
-	// クラス内で取得するために追加
-	DirectXCommon* dxCommon = DirectXCommon::GetInstance();
+	// graphicsPipelineStateDescを参照することで警告を回避
+	(void)graphicsPipelineStateDesc;
+
+	
 
 	ID3D12PipelineState* graphicsPipelineState = nullptr;
+#ifdef _DEBUG
+
+	// クラス内で取得するために追加
+	DirectXCommon* dxCommon = DirectXCommon::GetInstance();
 	HRESULT hr = dxCommon->GetDevice()->CreateGraphicsPipelineState(&graphicsPipelineStateDesc, IID_PPV_ARGS(&graphicsPipelineState));
 	assert(SUCCEEDED(hr));
-
+#endif
 	// 生成した PipelineState をとっておく
 	pipelineState_ = graphicsPipelineState;
 }
@@ -23,5 +29,4 @@ ID3D12PipelineState* PipelineState::Get() { return pipelineState_.Get(); }
 PipelineState::PipelineState() {}
 
 // デストラクタ
-PipelineState::~PipelineState() {
-}
+PipelineState::~PipelineState() {}
